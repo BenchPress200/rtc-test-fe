@@ -18,7 +18,7 @@ function Room() {
     let kurentoPeer;
 
     // WebSocket 연결 설정
-    ws.current = new WebSocket(`ws://${domain}:8080/ws`);
+    ws.current = new WebSocket(`ws://${domain}:8081/ws`);
     ws.current.onopen = () => {
       console.log("WebSocket connection established");
       ws.current.send(JSON.stringify({ event: 'joinRoom', roomId }));
