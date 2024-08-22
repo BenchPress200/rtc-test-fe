@@ -1,26 +1,33 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const Home = () => {
+function Home() {
+  const [nickname, setNickname] = useState('');
   const [roomId, setRoomId] = useState('');
   const navigate = useNavigate();
 
-  const handleJoinRoom = () => {
-    if (roomId.trim() !== '') {
-        navigate(`/room/${roomId}`);
+  const handleEnterRoom = () => {
+    if (nickname && roomId) {
+      navigate(`/room/${roomId}`, { state: { nickname } });
     }
   };
 
   return (
     <div>
-      <h1>Enter Room</h1>
-      <input
-        type="text"
-        placeholder="Enter room number"
-        value={roomId}
-        onChange={(e) => setRoomId(e.target.value)}
+      <h1>방 입장</h1>
+      <input 
+        type="text" 
+        placeholder="닉네임" 
+        value={nickname} 
+        onChange={(e) => setNickname(e.target.value)} 
       />
-      <button onClick={handleJoinRoom}>Join</button>
+      <input 
+        type="text" 
+        placeholder="방 번호" 
+        value={roomId} 
+        onChange={(e) => setRoomId(e.target.value)} 
+      />
+      <button onClick={handleEnterRoom}>입장</button>
     </div>
   );
 }
