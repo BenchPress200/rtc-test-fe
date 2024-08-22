@@ -69,7 +69,8 @@ function Room() {
         localVideoRef.current.srcObject = stream;
 
         // 서버에 참가자 등록
-        webSocketRef.current.send(JSON.stringify({
+        // 스프링 쿠렌토핸들러로 요청
+        webSocketRef.current.send(JSON.stringify({ 
           id: 'joinRoom',
           roomId,
           nickname
@@ -90,12 +91,17 @@ function Room() {
   };
 
   const createPeerConnection = async (nickname) => {
-    // 중복된 피어 연결 방지
-    if (peerConnections.current[nickname]) {
-      return peerConnections.current[nickname];
+    const servers = {
+      iceServers: [
+        {
+            urls: ['stun:stun1.l.google.com:19302', 'stun:stun1.l.google.com:19302'],
+        },
+      ],
+      iceCandidatePoolSize: 10,
     }
 
-    const peerConnection = new RTCPeerConnection();
+    const peerConnection = new RTCPeerConnection(servers);
+
     peerConnections.current[nickname] = peerConnection;
     negotiationStatus.current[nickname] = false;  // 협상 초기 상태
 
@@ -103,6 +109,7 @@ function Room() {
     localStream.current.getTracks().forEach(track => peerConnection.addTrack(track, localStream.current));
 
     // ICE 후보자 처리
+    // 여기할 차례
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         webSocketRef.current.send(JSON.stringify({
@@ -124,6 +131,7 @@ function Room() {
       });
     };
 
+    
     // 새로운 연결 생성 후 SDP Offer 전송
     try {
       if (!negotiationStatus.current[nickname]) {
