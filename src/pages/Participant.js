@@ -76,7 +76,7 @@ class Participant {
       this.sendMessage(msg);
     }
   
-    // Handle ICE candidate events
+    
     onIceCandidate(candidate) {
       console.log('Local candidate' + JSON.stringify(candidate));
   
@@ -89,7 +89,7 @@ class Participant {
       this.sendMessage(message);
     }
   
-    // Dispose the participant and clean up
+    
     dispose() {
       console.log('Disposing participant ' + this.name);
       if (this.rtcPeer) {

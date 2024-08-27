@@ -249,5 +249,3 @@ const Room = () => {
 }
 
 export default Room;
-
-// 그냥 페이지 쪼개기
