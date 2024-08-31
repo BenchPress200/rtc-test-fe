@@ -24,6 +24,7 @@ class Participant {
       this.container.appendChild(this.video);
       this.container.appendChild(this.span);
       this.container.onclick = this.switchContainerClass.bind(this);
+      
       if (me !== name) {
           document.getElementById('participants').appendChild(this.container);
       }

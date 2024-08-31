@@ -145,7 +145,16 @@ const Room = () => {
 		var options = {
 			localVideo: video,
 			mediaConstraints: constraints,
-			onicecandidate: participant.onIceCandidate.bind(participant)
+			onicecandidate: participant.onIceCandidate.bind(participant),
+			configuration: {
+				iceServers: [
+					{
+						urls: 'turn:13.209.11.178:3478',
+						username: 'blueberry',
+						credential: '1234'
+					}
+				]
+			}
 		}
 
 		participant.rtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerSendonly(options,
@@ -158,7 +167,6 @@ const Room = () => {
 
 		
 		participant.rtcPeer.getLocalStream((stream) => {
-			console.log('로컬할당')
 			localStreamRef.current = stream;
 			if (!stream) {
 				console.error('Failed to get local stream');
@@ -171,6 +179,7 @@ const Room = () => {
 	}
 
 	const leaveRoom = () => {
+		console.log('click')
 		sendMessage({
 			id : 'leaveRoom'
 		});
@@ -190,8 +199,17 @@ const Room = () => {
 		var video = participant.getVideoElement();
 
 		var options = {
-		remoteVideo: video,
-		onicecandidate: participant.onIceCandidate.bind(participant)
+			remoteVideo: video,
+			onicecandidate: participant.onIceCandidate.bind(participant),
+			configuration: {
+				iceServers: [
+					{
+						urls: 'turn:13.209.11.178:3478',
+						username: 'blueberry',
+						credential: '1234'
+					}
+				]
+			}
 		}
 
 		participant.rtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,
@@ -206,8 +224,12 @@ const Room = () => {
 	const onParticipantLeft = (request) => {
 		console.log('Participant ' + request.name + ' left');
 		var participant = participants[request.name];
-		participant.dispose();
-		delete participants[request.name];
+
+		// 추가 코드
+		if (participant !== undefined) {
+			participant.dispose();
+			delete participants[request.name];
+		}
 	}
 
 	const toggleCam = () => {
