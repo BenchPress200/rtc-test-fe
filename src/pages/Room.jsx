@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import kurentoUtils from 'kurento-utils';
 import Participant from './Participant';
 import styles from '../styles/Room.module.css';
+import RoomHeader from '../components/RoomHeader';
 
 
 
@@ -13,6 +14,7 @@ const Room = () => {
 	const nickname = location.state?.nickname;
 	const navigate = useNavigate();
 	
+	const [numberOfUsers, setNumberOfUsers] = useState(0);
 	const [isCamOn, setCamOn] = useState(true);
 	const [isMicOn, setMicOn] = useState(true);
 	
@@ -20,6 +22,11 @@ const Room = () => {
 	const localVideoRef = useRef(null);
 	const wsRef = useRef(null);
 	const participants = {};
+	var num = 0;
+
+
+	
+	
 
 	useEffect(() => {
 		wsRef.current = new WebSocket('ws://localhost:8080/signal');
@@ -75,6 +82,7 @@ const Room = () => {
 			}
 		}
 	}, [wsRef.current])
+
 
 	const sendMessage = (message) => {
 		const jsonMessage = JSON.stringify(message);
@@ -193,9 +201,10 @@ const Room = () => {
 		wsRef.current.close();
 	}
 
-	const receiveVideo = (sender) => {
+	const receiveVideo = async (sender) => {
+		
 		var participant = new Participant(nickname, sender, sendMessage);
-		participants[sender] = participant;
+		participants[sender] = participant;	
 		var video = participant.getVideoElement();
 
 		var options = {
@@ -212,13 +221,26 @@ const Room = () => {
 			}
 		}
 
-		participant.rtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,
-				function (error) {
+		participant.rtcPeer = await new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,
+			function (error) {
 				if(error) {
 					return console.error(error);
 				}
-				this.generateOffer (participant.offerToReceiveVideo.bind(participant));
+				this.generateOffer(participant.offerToReceiveVideo.bind(participant));
+				num = Object.keys(participants).length;
+
+
+				console.log(num);
+				if(this) {
+					setNumberOfUsers(num);
+				}
+				// set로 참가자가 변환뒤로 다른 렌더링에 생기면 참가자 값이 undefined가 되면서 에러터짐
+				
 		});
+		
+
+
+		
 	}
 
 	const onParticipantLeft = (request) => {
@@ -230,6 +252,7 @@ const Room = () => {
 			participant.dispose();
 			delete participants[request.name];
 		}
+
 	}
 
 	const toggleCam = () => {
@@ -247,7 +270,8 @@ const Room = () => {
 
   return (
     <div id="container" className={styles.roomBody}>
-		<h2 id="room-header" className={styles.roomHeader}>방 번호  {roomId}</h2>
+		<RoomHeader roomId={roomId} numberOfUsers={numberOfUsers}></RoomHeader>
+
 				<div id="participants" className={styles.videoContainer}>
 					<div className={styles.participant} id={nickname}>
 						<video id="video-나" className={styles.video} ref={localVideoRef} autoPlay playsInline muted></video>
