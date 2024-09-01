@@ -1,7 +1,7 @@
 class Participant {
     constructor(me, name, sendMessage) {
       this.name = name;
-      this.sendMessage = sendMessage
+      this.sendMessage = sendMessage;
       this.container = document.createElement('div');
       this.container.className = 'participant';
       this.container.style.display = 'flex';
@@ -24,7 +24,7 @@ class Participant {
       this.container.appendChild(this.video);
       this.container.appendChild(this.span);
       this.container.onclick = this.switchContainerClass.bind(this);
-      
+
       if (me !== name) {
           document.getElementById('participants').appendChild(this.container);
       }

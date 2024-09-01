@@ -3,7 +3,14 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import kurentoUtils from 'kurento-utils';
 import Participant from './Participant';
 import styles from '../styles/Room.module.css';
-import RoomHeader from '../components/RoomHeader';
+
+/**
+ * participant로 생성한 태그 값을 state로 관리하려고 시도하면 
+ * 파악하지 못한 에러가 터짐
+ * 
+ * -> DOM에 직접 접근할 수 밖에 없음
+ * 
+ */
 
 
 
@@ -14,7 +21,6 @@ const Room = () => {
 	const nickname = location.state?.nickname;
 	const navigate = useNavigate();
 	
-	const [numberOfUsers, setNumberOfUsers] = useState(0);
 	const [isCamOn, setCamOn] = useState(true);
 	const [isMicOn, setMicOn] = useState(true);
 	
@@ -22,9 +28,7 @@ const Room = () => {
 	const localVideoRef = useRef(null);
 	const wsRef = useRef(null);
 	const participants = {};
-	var num = 0;
-
-
+	const numberOfUsersRef = useRef(0);
 	
 	
 
@@ -76,12 +80,44 @@ const Room = () => {
 						}
 					});
 					break;
+
+				// 추가코드 START ---------------------------------------------------------
+				case 'isCamOn':
+					controlCam(parsedMessage);
+					break;
+
+				case 'isMicOn':
+					controlMic(parsedMessage);
+					break;
+				// 추가코드 END ---------------------------------------------------------
+
+
 				default:
 					console.error('Unrecognized message', parsedMessage);
 				}
 			}
 		}
 	}, [wsRef.current])
+
+	// 추가코드 START ---------------------------------------------------------
+	const controlCam = (parsedMessage) => {
+		if (parsedMessage.isCamOn) {
+			document.getElementById(`video-${parsedMessage.sender}`).style.visibility = 'visible'
+		} else {
+			document.getElementById(`video-${parsedMessage.sender}`).style.visibility = 'hidden'
+		}
+	}
+
+	const controlMic = (parsedMessage) => {
+		if (parsedMessage.isMicOn) {
+			document.getElementById(`video-${parsedMessage.sender}`).style.muted = true;
+		} else {
+			document.getElementById(`video-${parsedMessage.sender}`).style.muted = false;
+		}
+	}
+
+
+	// 추가코드 END ---------------------------------------------------------
 
 
 	const sendMessage = (message) => {
@@ -122,10 +158,9 @@ const Room = () => {
 	const stop = () => {
 		console.log("Stopping WebRTC communication");
 		
-		// 모든 참여자의 rtcPeer 객체를 정리
 		for (var key in participants) {
 			if (participants[key].rtcPeer) {
-				participants[key].rtcPeer.dispose(); // WebRTC 연결 해제
+				participants[key].rtcPeer.dispose();
 				participants[key].rtcPeer = null;
 			}
 		}
@@ -146,7 +181,22 @@ const Room = () => {
 		};
 		console.log(nickname + " registered in room ");
 		var participant = new Participant(nickname, nickname, sendMessage);
+
+
+		
+		
 		participants[nickname] = participant;
+
+
+
+		// 추가 코드 START -------------------------------------------------------------
+		// 입장 시 인원 업데이트
+		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
+		numberOfUsersRef.current = Object.keys(participants).length;
+		// 추가 코드 END -------------------------------------------------------------
+
+
+
 		
 		var video = participant.getVideoElement();
 
@@ -201,10 +251,16 @@ const Room = () => {
 		wsRef.current.close();
 	}
 
-	const receiveVideo = async (sender) => {
+	const receiveVideo = (sender) => {
 		
 		var participant = new Participant(nickname, sender, sendMessage);
 		participants[sender] = participant;	
+
+		// 추가코드 START -------------------------------------------
+		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
+		numberOfUsersRef.current = Object.keys(participants).length;
+		// 추가코드 END -------------------------------------------
+
 		var video = participant.getVideoElement();
 
 		var options = {
@@ -221,44 +277,52 @@ const Room = () => {
 			}
 		}
 
-		participant.rtcPeer = await new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,
+		participant.rtcPeer = new kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(options,
 			function (error) {
 				if(error) {
 					return console.error(error);
 				}
 				this.generateOffer(participant.offerToReceiveVideo.bind(participant));
-				num = Object.keys(participants).length;
-
-
-				console.log(num);
-				if(this) {
-					setNumberOfUsers(num);
-				}
-				// set로 참가자가 변환뒤로 다른 렌더링에 생기면 참가자 값이 undefined가 되면서 에러터짐
-				
-		});
-		
-
-
-		
+		});		
 	}
 
 	const onParticipantLeft = (request) => {
 		console.log('Participant ' + request.name + ' left');
 		var participant = participants[request.name];
 
-		// 추가 코드
+		// 추가 코드 START ------------------------------------------
 		if (participant !== undefined) {
 			participant.dispose();
 			delete participants[request.name];
 		}
+		// 추가 코드 END ------------------------------------------
 
+		// 추가코드 START -------------------------------------------
+		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
+		numberOfUsersRef.current = Object.keys(participants).length;
+		// 추가코드 END -------------------------------------------
 	}
 
 	const toggleCam = () => {
 		localStreamRef.current.getVideoTracks().forEach(track => (track.enabled = !isCamOn));
 		setCamOn(!isCamOn);
 	};
+
+	// 추가코드 START -------------------------------------------
+	useEffect(() => {
+		console.log(numberOfUsersRef.current)
+		if(numberOfUsersRef.current > 0) {
+			console.log('캠조작 !')
+			const message = {
+				id: 'isCamOn',
+				sender: nickname,
+				isCamOn: isCamOn
+			}
+	
+			sendMessage(message);
+		}
+	}, [isCamOn]);
+	// 추가코드 END -------------------------------------------
 	
 
 	// 마이크 상태 토글 함수
@@ -267,29 +331,43 @@ const Room = () => {
 		setMicOn(!isMicOn);
 	};
 
+	// 추가코드 START -------------------------------------------
+	useEffect(() => {
+		if(numberOfUsersRef.current > 0) {
+			const message = {
+				id: 'isMicOn',
+				sender: nickname,
+				isMicOn: isMicOn
+			}
+	
+			sendMessage(message);
+		}
+	}, [isMicOn]);
+	// 추가코드 END -------------------------------------------
+
 
   return (
     <div id="container" className={styles.roomBody}>
-		<RoomHeader roomId={roomId} numberOfUsers={numberOfUsers}></RoomHeader>
-
-				<div id="participants" className={styles.videoContainer}>
-					<div className={styles.participant} id={nickname}>
-						<video id="video-나" className={styles.video} ref={localVideoRef} autoPlay playsInline muted></video>
-						<span className="videoNickname">{nickname}</span>
-					</div>
-					
-
+		<div id="room-header" className={styles.roomHeaderBox}>
+			<div className={styles.roomNumber}>{roomId}번 방</div>
+			<div id="numUsers" className={styles.numUsers}>0 명</div>
+		</div>
+			<div id="participants" className={styles.videoContainer}>
+				<div className={styles.participant} id={nickname}>
+					<video id="video-나" className={styles.video} ref={localVideoRef} autoPlay playsInline muted></video>
+					<span className="videoNickname">{nickname}</span>
 				</div>
+			</div>
 
-				<input type="button" id="button-leave" onMouseUp={(e) => leaveRoom()}
-					value="Leave room"/>
+			<input type="button" id="button-leave" onMouseUp={(e) => leaveRoom()}
+				value="Leave room"/>
 
-				<button onClick={toggleCam}>
-					{isCamOn ? 'Turn Off Camera' : 'Turn On Camera'}
-				</button>
-				<button onClick={toggleMic}>
-					{isMicOn ? 'Turn Off Mic' : 'Turn On Mic'}
-				</button>
+			<button onClick={toggleCam}>
+				{isCamOn ? 'Turn Off Camera' : 'Turn On Camera'}
+			</button>
+			<button onClick={toggleMic}>
+				{isMicOn ? 'Turn Off Mic' : 'Turn On Mic'}
+			</button>
 	</div>
   );
 }
