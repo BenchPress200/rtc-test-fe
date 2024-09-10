@@ -12,8 +12,6 @@ import styles from '../styles/Room.module.css';
  * 
  */
 
-
-
 const Room = () => {
 	
 	const { roomId } = useParams();
@@ -46,7 +44,20 @@ const Room = () => {
 
 		return () => {
 			if (wsRef.current) {
+				alert("소켓닫기")
 			  wsRef.current.close();
+			}
+
+			if (localStreamRef.current) {
+				localStreamRef.current.getTracks().forEach(track => track.stop());
+			}
+	
+			// WebRTC 피어 연결 종료
+			for (let key in participants) {
+				if (participants[key].rtcPeer) {
+					participants[key].rtcPeer.dispose();
+					participants[key].rtcPeer = null;
+				}
 			}
 		};
 	  
