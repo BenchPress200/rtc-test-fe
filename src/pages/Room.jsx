@@ -35,12 +35,25 @@ const Room = () => {
 
 		wsRef.current.onopen = () => {
 			console.log("WebSocket connection established");
-			register();  // WebSocket이 OPEN 상태가 된 후 register 호출
+			register();
 		};
 
 		wsRef.current.onerror = (error) => {
 			console.error("WebSocket error: ", error);
 		  };
+
+		// 핑퐁 START ----------------------------------------------------------
+		const interval = setInterval(() => {
+			const message = {
+				id: "pingPong",
+				message: "ping"
+			}
+			sendMessage(message);
+		  }, 10000);
+		// 핑퐁 START ----------------------------------------------------------
+	  
+		  
+		  
 
 		return () => {
 			if (wsRef.current) {
@@ -52,13 +65,18 @@ const Room = () => {
 				localStreamRef.current.getTracks().forEach(track => track.stop());
 			}
 	
-			// WebRTC 피어 연결 종료
+			
 			for (let key in participants) {
 				if (participants[key].rtcPeer) {
 					participants[key].rtcPeer.dispose();
 					participants[key].rtcPeer = null;
 				}
 			}
+			
+			// 핑퐁 START ----------------------------------------------------------
+			clearInterval(interval);
+			console.log('인터벌 정리됨');
+			// 핑퐁 END ----------------------------------------------------------
 		};
 	  
 	}, []);
@@ -92,16 +110,19 @@ const Room = () => {
 					});
 					break;
 
-				// 추가코드 START ---------------------------------------------------------
 				case 'isCamOn':
 					controlCam(parsedMessage);
 					break;
-
+					
 				case 'isMicOn':
 					controlMic(parsedMessage);
 					break;
-				// 추가코드 END ---------------------------------------------------------
-
+							
+				// 핑퐁 START ---------------------------------------------------------
+				case 'pingPong':
+					console.log(parsedMessage);
+					break;
+				// 핑퐁 END ---------------------------------------------------------
 
 				default:
 					console.error('Unrecognized message', parsedMessage);
@@ -110,7 +131,6 @@ const Room = () => {
 		}
 	}, [wsRef.current])
 
-	// 추가코드 START ---------------------------------------------------------
 	const controlCam = (parsedMessage) => {
 		if (parsedMessage.isCamOn) {
 			document.getElementById(`video-${parsedMessage.sender}`).style.visibility = 'visible'
@@ -120,15 +140,15 @@ const Room = () => {
 	}
 
 	const controlMic = (parsedMessage) => {
+		console.log('here: ', parsedMessage)
 		if (parsedMessage.isMicOn) {
-			document.getElementById(`video-${parsedMessage.sender}`).style.muted = true;
+			document.getElementById(`video-${parsedMessage.sender}`).muted = false;
 		} else {
-			document.getElementById(`video-${parsedMessage.sender}`).style.muted = false;
+			document.getElementById(`video-${parsedMessage.sender}`).muted = true;
 		}
 	}
 
 
-	// 추가코드 END ---------------------------------------------------------
 
 
 	const sendMessage = (message) => {
@@ -199,14 +219,8 @@ const Room = () => {
 		participants[nickname] = participant;
 
 
-
-		// 추가 코드 START -------------------------------------------------------------
-		// 입장 시 인원 업데이트
 		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
 		numberOfUsersRef.current = Object.keys(participants).length;
-		// 추가 코드 END -------------------------------------------------------------
-
-
 
 		
 		var video = participant.getVideoElement();
@@ -267,10 +281,9 @@ const Room = () => {
 		var participant = new Participant(nickname, sender, sendMessage);
 		participants[sender] = participant;	
 
-		// 추가코드 START -------------------------------------------
+
 		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
 		numberOfUsersRef.current = Object.keys(participants).length;
-		// 추가코드 END -------------------------------------------
 
 		var video = participant.getVideoElement();
 
@@ -301,17 +314,14 @@ const Room = () => {
 		console.log('Participant ' + request.name + ' left');
 		var participant = participants[request.name];
 
-		// 추가 코드 START ------------------------------------------
 		if (participant !== undefined) {
 			participant.dispose();
 			delete participants[request.name];
 		}
-		// 추가 코드 END ------------------------------------------
-
-		// 추가코드 START -------------------------------------------
+	
 		document.getElementById("numUsers").innerText = `${Object.keys(participants).length} 명`
 		numberOfUsersRef.current = Object.keys(participants).length;
-		// 추가코드 END -------------------------------------------
+	
 	}
 
 	const toggleCam = () => {
@@ -319,7 +329,6 @@ const Room = () => {
 		setCamOn(!isCamOn);
 	};
 
-	// 추가코드 START -------------------------------------------
 	useEffect(() => {
 		console.log(numberOfUsersRef.current)
 		if(numberOfUsersRef.current > 0) {
@@ -333,16 +342,13 @@ const Room = () => {
 			sendMessage(message);
 		}
 	}, [isCamOn]);
-	// 추가코드 END -------------------------------------------
-	
 
-	// 마이크 상태 토글 함수
+	
 	const toggleMic = () => {
 		localStreamRef.current.getAudioTracks().forEach(track => (track.enabled = !isMicOn));
 		setMicOn(!isMicOn);
 	};
 
-	// 추가코드 START -------------------------------------------
 	useEffect(() => {
 		if(numberOfUsersRef.current > 0) {
 			const message = {
@@ -354,7 +360,7 @@ const Room = () => {
 			sendMessage(message);
 		}
 	}, [isMicOn]);
-	// 추가코드 END -------------------------------------------
+
 
 
   return (
@@ -365,7 +371,7 @@ const Room = () => {
 		</div>
 			<div id="participants" className={styles.videoContainer}>
 				<div className={styles.participant} id={nickname}>
-					<video id="video-나" className={styles.video} ref={localVideoRef} autoPlay playsInline muted></video>
+					<video id="video-나" className={styles.video} ref={localVideoRef} autoPlay playsInline></video>
 					<span className="videoNickname">{nickname}</span>
 				</div>
 			</div>
